@@ -2,10 +2,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
+import { useCart, Product } from "@/contexts/CartContext";
+import CartModal from "@/components/CartModal";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Index() {
-  const products = [
+  const { state, addItem } = useCart();
+  const navigate = useNavigate();
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('name');
+
+  const allProducts: Product[] = [
     {
       id: 1,
       name: "Электродвигатель АИР 80А2",
@@ -13,7 +24,14 @@ export default function Index() {
       oldPrice: "14 000 ₽",
       image: "/placeholder.svg",
       inStock: true,
-      category: "Электродвигатели"
+      category: "Электродвигатели",
+      description: "Высокоэффективный асинхронный электродвигатель мощностью 1.1 кВт",
+      specifications: {
+        "Мощность": "1.1 кВт",
+        "Напряжение": "380 В",
+        "Частота вращения": "3000 об/мин",
+        "КПД": "85%"
+      }
     },
     {
       id: 2,
@@ -22,7 +40,14 @@ export default function Index() {
       oldPrice: null,
       image: "/placeholder.svg",
       inStock: true,
-      category: "Кабели"
+      category: "Кабели",
+      description: "Силовой кабель с медными жилами в двойной изоляции",
+      specifications: {
+        "Сечение": "2.5 мм²",
+        "Количество жил": "3",
+        "Материал": "Медь",
+        "Оболочка": "ПВХ пластикат"
+      }
     },
     {
       id: 3,
@@ -31,7 +56,14 @@ export default function Index() {
       oldPrice: "520 ₽",
       image: "/placeholder.svg",
       inStock: false,
-      category: "Автоматика"
+      category: "Автоматика",
+      description: "Однополюсный автоматический выключатель на 16А",
+      specifications: {
+        "Номинальный ток": "16 А",
+        "Количество полюсов": "1",
+        "Характеристика": "C",
+        "Отключающая способность": "6 кА"
+      }
     },
     {
       id: 4,
@@ -40,7 +72,14 @@ export default function Index() {
       oldPrice: null,
       image: "/placeholder.svg",
       inStock: true,
-      category: "Освещение"
+      category: "Освещение",
+      description: "Энергосберегающий LED светильник с высокой светоотдачей",
+      specifications: {
+        "Мощность": "36 Вт",
+        "Световой поток": "3600 лм",
+        "Цветовая температура": "4000К",
+        "Степень защиты": "IP40"
+      }
     },
     {
       id: 5,
@@ -49,7 +88,14 @@ export default function Index() {
       oldPrice: "150 ₽",
       image: "/placeholder.svg",
       inStock: true,
-      category: "Установочные изделия"
+      category: "Установочные изделия",
+      description: "Электрическая розетка с защитным заземлением",
+      specifications: {
+        "Номинальный ток": "16 А",
+        "Напряжение": "250 В",
+        "Степень защиты": "IP20",
+        "Материал": "Поликарбонат"
+      }
     },
     {
       id: 6,
@@ -58,7 +104,14 @@ export default function Index() {
       oldPrice: null,
       image: "/placeholder.svg",
       inStock: true,
-      category: "Щитовое оборудование"
+      category: "Щитовое оборудование",
+      description: "Металлический распределительный щиток для квартиры",
+      specifications: {
+        "Количество модулей": "12",
+        "Материал": "Сталь",
+        "Степень защиты": "IP31",
+        "Размеры": "250x300x120 мм"
+      }
     }
   ];
 
@@ -70,6 +123,30 @@ export default function Index() {
     { name: "Установочные изделия", icon: "Plug", count: 456 },
     { name: "Щитовое оборудование", icon: "Grid3x3", count: 234 }
   ];
+
+  const filteredAndSortedProducts = useMemo(() => {
+    let filtered = allProducts;
+    
+    if (selectedCategory !== 'all') {
+      filtered = allProducts.filter(product => product.category === selectedCategory);
+    }
+    
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'price-asc':
+          return parseFloat(a.price.replace(/[^\d]/g, '')) - parseFloat(b.price.replace(/[^\d]/g, ''));
+        case 'price-desc':
+          return parseFloat(b.price.replace(/[^\d]/g, '')) - parseFloat(a.price.replace(/[^\d]/g, ''));
+        case 'name':
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+  }, [selectedCategory, sortBy]);
+
+  const handleAddToCart = (product: Product) => {
+    addItem(product);
+  };
 
   return (
     <div className="min-h-screen bg-white font-open-sans">
@@ -113,10 +190,17 @@ export default function Index() {
                 <Icon name="User" size={18} />
                 <span>Вход</span>
               </Button>
-              <Button variant="outline" size="sm" className="flex items-center space-x-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center space-x-1"
+                onClick={() => setIsCartOpen(true)}
+              >
                 <Icon name="ShoppingCart" size={18} />
                 <span>Корзина</span>
-                <Badge variant="secondary" className="ml-1">3</Badge>
+                {state.itemCount > 0 && (
+                  <Badge variant="secondary" className="ml-1">{state.itemCount}</Badge>
+                )}
               </Button>
             </div>
           </div>
@@ -161,7 +245,13 @@ export default function Index() {
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-16">
             {categories.map((category, index) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card 
+                key={index} 
+                className={`hover:shadow-lg transition-shadow cursor-pointer ${
+                  selectedCategory === category.name ? 'ring-2 ring-blue-500' : ''
+                }`}
+                onClick={() => setSelectedCategory(category.name)}
+              >
                 <CardContent className="p-6 text-center">
                   <Icon name={category.icon} size={32} className="mx-auto mb-3 text-blue-600" />
                   <h4 className="font-semibold text-sm mb-1">{category.name}</h4>
@@ -171,10 +261,59 @@ export default function Index() {
             ))}
           </div>
 
+          {/* Filters and Sorting */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-8">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium">Категория:</span>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Все категории" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все категории</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.name} value={category.name}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium">Сортировка:</span>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">По названию</SelectItem>
+                  <SelectItem value="price-asc">По цене (возрастание)</SelectItem>
+                  <SelectItem value="price-desc">По цене (убывание)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedCategory !== 'all' && (
+              <Button 
+                variant="outline" 
+                onClick={() => setSelectedCategory('all')}
+                className="flex items-center space-x-1"
+              >
+                <Icon name="X" size={16} />
+                <span>Сбросить фильтр</span>
+              </Button>
+            )}
+          </div>
+
           {/* Products Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <Card key={product.id} className="hover:shadow-lg transition-shadow">
+            {filteredAndSortedProducts.map((product) => (
+              <Card 
+                key={product.id} 
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => navigate(`/product/${product.id}`)}
+              >
                 <CardHeader className="p-0">
                   <div className="relative">
                     <img 
@@ -200,6 +339,7 @@ export default function Index() {
                     {product.category}
                   </Badge>
                   <CardTitle className="text-lg mb-2 font-roboto">{product.name}</CardTitle>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
                   <div className="flex items-center space-x-2 mb-3">
                     <span className="text-2xl font-bold text-blue-600">{product.price}</span>
                     {product.oldPrice && (
@@ -210,11 +350,22 @@ export default function Index() {
                 
                 <CardFooter className="p-4 pt-0">
                   <div className="flex space-x-2 w-full">
-                    <Button className="flex-1" disabled={!product.inStock}>
+                    <Button 
+                      className="flex-1" 
+                      disabled={!product.inStock}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
+                    >
                       <Icon name="ShoppingCart" size={16} className="mr-2" />
                       В корзину
                     </Button>
-                    <Button variant="outline" size="icon">
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Icon name="Heart" size={16} />
                     </Button>
                   </div>
@@ -417,6 +568,9 @@ export default function Index() {
           </div>
         </div>
       </footer>
+
+      {/* Cart Modal */}
+      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </div>
   );
 }
